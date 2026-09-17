@@ -1,0 +1,5 @@
+.page { font-family: system-ui, sans-serif; padding: 24px; }
+.muted { color: #6b655a; }
+.box { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+table { border-collapse: collapse; margin-top: 12px; }
+th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }

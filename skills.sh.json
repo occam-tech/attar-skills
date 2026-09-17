@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Attar",
+      "description": "Skills for building native desktop applications with the Attar compiler, which compiles TypeScript and a carved Blink engine into one binary.",
+      "skills": ["attar-demo"]
+    }
+  ]
+}
