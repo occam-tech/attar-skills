@@ -1,190 +1,236 @@
 ---
 name: attar-demo
-description: Build a demo application with the Attar compiler that works on the first attempt. Covers the project shape, the exact build and run loop, the UI surface Attar accepts, the constructs it refuses with named errors, and how to verify the result. Use when asked for an Attar demo, sample, example or showcase app.
+description: "Build ambitious native applications with Attar while avoiding unsupported code. Use for Attar apps, demos, prototypes and showcases: establish the installed SDK boundary, prove uncertain dependencies early, and build complete user flows with React, static CSS and supported native capabilities."
 metadata:
   author: occam-tech
-  version: "1.0.0"
+  version: "1.1.0"
   homepage: https://attar.dev
 ---
 
-# Attar demo
+# Build applications with Attar
 
-Attar compiles TypeScript and TSX ahead of time and links it with a carved
-Blink engine into one native macOS application. No Electron, no Node at run
-time, one process.
+Preserve the user's product ambition. Prevent unsupported constructs from becoming
+architectural dependencies. Do not reduce an application to a toy because its
+runtime has a closed API surface. Rich layouts, multiple in-window views, complex
+state, reusable components and substantial domain logic can compose from a small
+set of supported primitives.
 
-A demo fails on the first attempt for one reason: the author writes ordinary
-web code that this closed world refuses. Read the two lists below before
-writing a line. Everything in "Accepted" was built and launched on the current
-release; everything in "Refused" fails with the named diagnostic.
+Attar compiles TypeScript and TSX ahead of time and links them with Blink for
+layout and paint. The standalone app does not ship Node or Electron. An npm
+package's browser support does not establish Attar support.
 
-## Before you write code
+The installed skill name remains `attar-demo`; its workflow applies to complete
+applications as well as demos. There is no line-count, component-count or
+single-screen limit imposed by this skill.
+
+## Establish the actual build target
 
 ```sh
-attar --version     # expect 0.1.0-dev.NNNN.gHASH
-attar doctor        # every check must say PASS
+attar --version
+attar doctor --json
+attar build --help
 ```
 
-`attar doctor` failing is not your problem to work around. Report it and stop.
-Never restore files by hand to make it pass; that hides a broken install.
+Record the exact version and platform before choosing dependencies. This skill's
+macOS baseline is `0.1.0-dev.7620.g57143d8614b3`, checked on 2026-09-18:
+[public SDK release](https://github.com/occam-tech/attar-releases/releases/tag/v0.1.0-dev.7620.g57143d8614b3).
+Its extracted SDK passed doctor, TSX and JS starter builds, signature checks and
+packaged initial-tree startup. These checks do not prove every UI interaction.
 
-Requirements: Apple silicon, macOS 15 or newer, Xcode Command Line Tools.
-The toolchain picks a compatible Apple SDK itself and prints
-`ATTAR_UI_MACOS_SDK_REJECT` for each one it skips. That line is normal.
+That baseline needs Apple silicon, macOS 15 or newer and Xcode Command Line
+Tools. The builder selects a compatible Apple SDK; an
+`ATTAR_UI_MACOS_SDK_REJECT` line followed by a successful selection is normal.
+Linux packages have their own release and verification scope. Do not apply the
+macOS evidence to Linux or assume both package managers install the same version.
 
-## Project shape
+Use the [release guide](https://attar.dev/release) and
+[compatibility guide](https://attar.dev/features) as discovery aids. Resolve any
+conflict against the installed version, its diagnostics and a focused check.
+If doctor fails, follow its documented remediation, then rerun it. Do not patch
+installed toolchain files, bypass integrity checks or continue a dependent build
+with a broken SDK. Continue independent design or source work where useful.
 
+## Preserve ambition; resolve risk before expansion
+
+Sketch the requested user flows and the capabilities each needs. Pay particular
+attention to data access, persistence, native integration, third-party components
+and runtime code or style generation. Classify each dependency:
+
+| Evidence for this target | What to do |
+|---|---|
+| Supported path with a matching example or test | Reuse that path and compose it into the application. |
+| Explicitly refused construct | Use a supported equivalent that preserves the required behavior; otherwise identify the missing capability. |
+| Unknown API, package, option or version | Inspect its imports and required APIs, then prove the smallest real usage before depending on it. Unknown does not mean forbidden. |
+
+For an uncertain dependency, make a small isolated probe with the exact package
+version, imports, CSS and interaction the application needs. Build it with the
+installed SDK and exercise the relevant behavior. A successful import or startup
+alone does not prove focus, scrolling, callbacks or teardown. Batch related probes
+where that reduces linking time without hiding which capability failed.
+
+A failed optional dependency does not invalidate the product. Prefer another
+verified library, static CSS, or components composed from supported React and DOM
+primitives. Preserve required semantics and visual quality. Do not silently
+replace persistence with memory, live data with fixtures, or a real action with a
+no-op. If a required capability has no verified route, state that exact blocker
+and the viable tradeoff; continue independent parts of the requested application.
+
+For an essential OS or data capability, consult the documented
+[native integration route](https://attar.dev/native). A native extension is a
+separate integration task to prove, not permission to invent a JavaScript API,
+add Node to the runtime or bypass an SDK boundary.
+
+## Start with the generated project
+
+```sh
+attar init my-app --template tsx
+cd my-app
+attar build
 ```
-my-demo/
-  attar.toml
-  src/app.tsx        entry
-  src/app.css        ordinary static CSS
-  src/assets/…       images the entry imports
-```
 
-`attar.toml` for a standalone app:
+Build the generated starter once to establish a working installation. Keep its
+mounting convention and configuration, then implement an end-to-end user flow.
+Add the remaining flows incrementally, checking each new runtime dependency
+before expanding it. Reuse successful checks for unchanged inputs; build time
+is a reason to group coherent changes, not to defer all integration until the end.
+
+The baseline standalone configuration is:
 
 ```toml
 [project]
-name = "my-demo"
-display_name = "My Demo"
+name = "my-app"
+display_name = "My App"
 
 [application]
-id = "dev.attar.my-demo"
+id = "dev.attar.my-app"
 
 [ui]
 entry = "src/app.tsx"
 ```
 
-`[ui]` accepts exactly `entry`, `stylesheets`, `resources`, `fonts`. Any other
-key fails with `ATTAR_UI_CONFIG`. Do not invent keys. `[viewport]` belongs to
-the Electron host and is ignored here: **the standalone window size is not
-configurable today**, the window opens at the default size.
+On this baseline `[ui]` accepts `entry`, `stylesheets`, `resources` and `fonts`.
+Do not invent configuration keys. Standalone window sizing is not exposed by
+this recipe; an Electron `[viewport]` example does not configure it. Design the
+layout to adapt to the available viewport rather than depend on an invented key.
 
-The entry mounts React once:
+The generated entry imports React, `render` from `react-dom`, and a static CSS
+file, then calls `render(<App />, document.getElementById('app'))`. Keep that
+known working mount unless another entry route has been verified for the target.
+Use ordinary source modules to organize features. Multiple views can switch
+through React state; a history-based router needs its own API check. Multiple
+native windows are outside this standalone recipe.
 
-```tsx
-import React from 'react';
-import { render } from 'react-dom';
-import './app.css';
+## Build from the supported UI surface
 
-function App() { … }
+Use these as starting points, not an exhaustive list or a promise that every
+option and combination is covered:
 
-render(<App />, document.getElementById('app'));
-```
+- React state, effects, refs, keyed lists and controlled inputs. Keep the
+  template's dependency versions; probe upgrades or new packages before adoption.
+- Semantic HTML for forms, navigation, tables, panels and text; inline SVG and
+  bundled images for graphics.
+- Static CSS imported from the entry or listed in `[ui].stylesheets`. Blink owns
+  cascade, layout and paint. Use flexbox, grid, custom properties, media queries,
+  pseudo-classes and transitions. Precompile Tailwind to a local CSS file.
+- `className` and supported individual properties in the React `style` object
+  for state-dependent presentation. Dynamic values do not require runtime
+  stylesheet generation.
+- DOM refs, selectors, geometry, focus, element scrolling and event handlers.
+  Timers, animation frames, MutationObserver, ResizeObserver, IntersectionObserver,
+  matchMedia and AbortController have implemented paths. Probe the exact options
+  and lifecycle of any unfamiliar use; this is not complete browser parity.
 
-`document.getElementById('app')` is the container the host provides. Use
-`render`, not `createRoot`.
+The SDK seal used by the macOS baseline passed 30 packaged shadcn component
+scenarios: accordion, alert, alert-dialog, aspect-ratio, badge, button, card,
+checkbox, collapsible, dialog, dropdown-menu, hover-card, input, label, menubar,
+navigation-menu, popover, progress, radio-group, scroll-area, select, separator,
+skeleton, slider, switch, table, tabs, textarea, toggle and tooltip.
 
-## The loop
+Those results cover pinned `new-york-v4` fixtures, not every variant, keyboard
+path, visual state or package upgrade. In a product checkout, use
+`testing/shadcn/native-probes/suite.json`, its behavior files and registry sources
+for exact cases and dependencies. `examples/standalone-panels` is an additional
+15-component example, not the full supported set. Menus and dialogs are no longer
+categorically excluded. Prove the interactions your application actually uses.
+
+## Boundaries that must shape the code
+
+The baseline refuses these paths; choose the supported construction before
+writing a feature around them:
+
+| Unsupported path | Supported direction or next step |
+|---|---|
+| Runtime HTML parsing through `innerHTML` or `dangerouslySetInnerHTML` | Construct React elements or a compiled node tree; `ATTAR_UI_INNER_HTML_UNSUPPORTED` is not an invitation to bypass parsing restrictions. |
+| `style.cssText`, runtime stylesheet insertion or rule generation | Static CSS plus classes and supported individual style properties; `ATTAR_UI_CSS_TEXT_FORBIDDEN`. |
+| Runtime CSS-in-JS such as style injection by emotion or styled-components | Extract styles at build time or use static CSS. Prove any extraction integration. |
+| Remote/dynamic CSS imports or `.module.css` | Local static CSS imports; CSS Modules are not implemented in this recipe. |
+| `eval`, `new Function`, arbitrary runtime code loading | A statically resolvable module graph; prebundle dependencies. |
+| Runtime `node:*` imports or Node/Electron globals in the standalone UI | Pure application logic or a documented, verified native integration. Build tools may use Node. |
+| `Blob`, desktop file drops, `window.scroll` | These have named unsupported diagnostics. Use an admitted asset, file integration or element-scroll path only when it satisfies the same need. |
+
+Do not assume a browser service exists because Blink renders the UI. Networking
+(`fetch`, XMLHttpRequest, WebSocket), persistent browser storage, canvas contexts,
+media playback, embedded frames, workers, clipboard and device APIs are not
+established by this standalone baseline. Before designing a feature around one,
+find a documented route for the exact target and prove it. A JS polyfill does not
+supply a missing OS service, native renderer or execution capability.
+
+Keep required assets local and statically discoverable. Use the documented
+resource and font configuration; do not hard-code development-machine paths.
+Do not change a third-party component's behavior merely to conceal a missing
+runtime primitive. A mock is appropriate only when the requested outcome
+explicitly calls for one.
+
+## Read failures and keep moving
+
+Read the first actionable diagnostic and its source location or stage. Later
+errors may be consequences. Keep the complete log for a failed build.
+
+- `ATTAR_UI_CONFIG`: compare the configuration with the generated template and
+  CLI help; do not guess another key.
+- `ATTAR025_LOCK`: inspect the intended SDK/dependency change, then use
+  `attar build --update-lock` when that change is deliberate. Do not delete the
+  lock as a generic repair.
+- `ATTAR_UI_DISTRIBUTION_FILE`: verify the installation and repair through the
+  supported installer; do not edit signed or hashed payload files.
+- A source/type/bundle error: correct the actual input or unsupported dependency.
+- A crash, unsupported native operation or failed interaction: retain the
+  reproducer and narrow the failing path. A successful link does not clear it.
+
+Do not hide exceptions, disable guards or weaken checks to obtain a green result.
+There is no blanket ban on iteration, application size, business logic or
+component composition. Keep the user's full requested outcome as the target.
+
+## Verify the delivered application
+
+Use the output path printed by `ATTAR_BUILD_PASS`. For a macOS build of the
+example project above, the initial-tree check is:
 
 ```sh
-attar init my-demo --template tsx     # templates: tsx, js
-cd my-demo
-# edit src/app.tsx and src/app.css
-attar build                            # about 5 minutes, ends with ATTAR_BUILD_PASS
-open target/attar/aarch64-apple-darwin/release/my-demo.app
-attar package                          # optional, makes a DMG
+target/attar/aarch64-apple-darwin/release/my-app.app/Contents/MacOS/attar-app --attar-check-startup
 ```
 
-The build is slow because it links the engine. Budget one build, not ten. Write
-the whole demo, then build. If you need to iterate, keep the app small.
+Require exit zero and `ATTAR_UI_STARTUP_CHECK_PASS`. This checks the packaged
+initial UI graph; it does not create a window or prove native input and paint.
+Then test the actual package through the permitted local interaction channel.
+Verify the advertised flows, relevant empty/error states, scrolling, focus and
+keyboard behavior, and clean shutdown. If window interaction is unavailable,
+report that limit and arrange the missing check rather than claiming completion.
 
-## Accepted
+`attar package` can prepare a distributable artifact after the app works.
+Ad hoc signing is not evidence of notarization or clean-machine acceptance.
+Report the exact SDK version, artifact path, what was built and what was actually
+exercised. Give measured size or timing only when useful; never inherit them
+from another application.
 
-Verified by building and launching on the current release.
+## Optional starting probe
 
-- **React 19** with `useState`, `useEffect`, `useRef`. The pinned pair is
-  `react` and `react-dom` 19.3.0.
-- **Ordinary semantic HTML**: `main`, `section`, `header`, `footer`, `h1`–`h6`,
-  `p`, `div`, `span`, `a`, `ul`, `li`, `label`, `button`, `input`, `textarea`,
-  `select`, `progress`, `table` with `thead`, `tbody`, `tr`, `th`, `td`,
-  formatting elements, fieldsets and forms.
-- **Static CSS in files**, imported from the entry (`import './app.css'`) or
-  listed in `[ui].stylesheets`. Blink parses it once and owns cascade, layout
-  and paint. Flexbox, grid, transitions, custom properties, media queries,
-  pseudo-classes all belong to Blink, not to Attar.
-- **The React `style` prop** with a plain object, when the selected SDK
-  supports it. The current release does.
-- **`className`** and class-based styling. Tailwind works if you commit the
-  compiled CSS file; the Tailwind CLI is a build tool, not a runtime.
-- **Controlled inputs**: `value` with `onChange`, checkboxes with `checked`.
-- **Lists** with `key`.
-- **Refs** and `getBoundingClientRect`, `clientWidth`, `scrollHeight`,
-  `focus`, `scrollIntoView`, `getElementsByTagName`.
-- **Timers**: `setTimeout`, `setInterval`, `requestAnimationFrame`.
-- **Events**: click, input, change, focus, blur, key, mouse, wheel, scroll,
-  drag and drop between elements, context menu.
-- **Inline SVG** and SVG files imported as assets.
-- **shadcn/ui components** from the pinned Radix set. The repository example
-  `examples/standalone-panels` ships fifteen unchanged components; use it as the
-  reference for anything component-heavy. Menus, dialogs, tooltips and
-  navigation are not among them and are known to fail.
-- **Browser APIs that exist**: `getComputedStyle`, `querySelector` and
-  `querySelectorAll`, `classList`, `dataset`, `matchMedia`, `MutationObserver`,
-  `IntersectionObserver`, `ResizeObserver`, `TreeWalker`, `AbortController`,
-  `document.createElement` and friends, pointer capture.
+The installed skill includes `assets/app.tsx` and `assets/app.css`. They exercise
+state, a controlled input, a keyed list, table, geometry, a timer, inline style and
+SVG. Copy them into a generated project when that probe is useful. They are not
+the required design, architecture or size of the user's application.
 
-## Refused
-
-Each of these ends the build or the commit with a named error. They are design
-boundaries, not bugs, so do not work around them.
-
-| Construct | Diagnostic |
-|---|---|
-| `dangerouslySetInnerHTML`, `innerHTML` | `ATTAR_UI_INNER_HTML_UNSUPPORTED` |
-| `style.cssText`, stylesheet injection, rule generation | `ATTAR_UI_CSS_TEXT_FORBIDDEN` |
-| CSS-in-JS: styled-components, emotion, tagged template styles | build error |
-| `eval`, `new Function`, runtime code loading, computed `import` | build error with a source location |
-| `Blob` | `ATTAR_WEB_API_UNSUPPORTED` |
-| file drops from the desktop | `ATTAR_UI_FILE_DROP_UNSUPPORTED` |
-| `window.scroll` | `ATTAR_UI_WINDOW_SCROLL_UNSUPPORTED` |
-
-Not present at all in a standalone app, so do not design around them:
-`fetch`, `XMLHttpRequest`, `WebSocket`, `localStorage`, `sessionStorage`,
-`IndexedDB`, `canvas.getContext`, `<audio>`, `<video>`, `<iframe>`, workers,
-service workers, `Notification`, clipboard APIs, geolocation, and every device
-API. A demo that needs data must carry it in the bundle or compute it.
-
-Anything not on either list: treat it as refused and pick another way. Guessing
-costs a five minute build.
-
-## Reading a failure
-
-Every diagnostic starts with `ATTAR_`. Read the first one, not the last: later
-lines are consequences.
-
-- `ATTAR_UI_BUILD_FAILED stage=…` names the stage that failed.
-- `ATTAR_UI_DISTRIBUTION_FILE` means the installed toolchain is damaged. Stop
-  and report; do not repair it by hand.
-- `ATTAR_UI_CONFIG` means `attar.toml` has a key that does not exist.
-- A TypeScript error is an ordinary type error; fix the source.
-
-## Rules
-
-- One window, one screen, no navigation. There is no router and no second
-  window.
-- Keep the demo under roughly two hundred lines of TSX. The point is to show the
-  compiler, not a product.
-- Ship every asset inside the project. Nothing is fetched at run time.
-- Do not weaken, skip or work around a check to make something pass.
-- Do not report success from a build alone. Launch the app, confirm the window
-  opens and the interaction works, then report.
-- Quote real numbers only: the app size from `du`, the build time you measured.
-  Never carry numbers over from another build.
-
-## Starting point
-
-`assets/app.tsx` and `assets/app.css` in this skill are a complete demo that
-was built and launched on the current release. It covers state, a controlled
-input, a list with keys, a table, a ref with geometry, a timer, the `style`
-prop and inline SVG. Copy them into a fresh `attar init` project and change
-them; that is the fastest safe path to a working first build.
-
-## Done means
-
-- `attar doctor` passes.
-- `attar build` ends with `ATTAR_BUILD_PASS`.
-- The `.app` opens, shows the demo, and reacts to the interaction it advertises.
-- You report the app size, the build time and what you verified by looking at
-  the window, each measured in this run.
+Install the complete skill to obtain those files:
+`npx skills add occam-tech/attar-skills`. Reading only the raw Markdown on the
+website does not install its assets; the generated CLI starter also works without
+them.
