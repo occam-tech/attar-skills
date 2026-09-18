@@ -3,7 +3,7 @@ name: attar-demo
 description: "Build ambitious native applications with Attar while avoiding unsupported code. Use for Attar apps, demos, prototypes and showcases: establish the installed SDK boundary, prove uncertain dependencies early, and build complete user flows with React, static CSS and supported native capabilities."
 metadata:
   author: occam-tech
-  version: "1.2.0"
+  version: "1.3.0"
   homepage: https://attar.dev
 ---
 
@@ -191,18 +191,24 @@ option and combination is covered:
   matchMedia and AbortController have implemented paths. Probe the exact options
   and lifecycle of any unfamiliar use; this is not complete browser parity.
 
-The SDK seal used by the macOS baseline passed 30 packaged shadcn component
-scenarios: accordion, alert, alert-dialog, aspect-ratio, badge, button, card,
-checkbox, collapsible, dialog, dropdown-menu, hover-card, input, label, menubar,
-navigation-menu, popover, progress, radio-group, scroll-area, select, separator,
-skeleton, slider, switch, table, tabs, textarea, toggle and tooltip.
+The macOS Apple silicon baseline passed 61 packaged shadcn component scenarios:
+accordion, alert, alert-dialog, aspect-ratio, attachment, avatar, badge,
+breadcrumb, bubble, button, button-group, calendar, card, carousel, chart,
+checkbox, collapsible, combobox, command, context-menu, dialog, direction,
+drawer, dropdown-menu, empty, field, form, hover-card, input, input-group,
+input-otp, item, kbd, label, marker, menubar, message, message-scroller,
+native-select, navigation-menu, pagination, popover, progress, radio-group,
+resizable, scroll-area, select, separator, sheet, sidebar, skeleton, slider,
+sonner, spinner, switch, table, tabs, textarea, toggle, toggle-group and tooltip.
+The run completed with no scenario failures, crashes or timeouts.
 
-Those results cover pinned `new-york-v4` fixtures, not every variant, keyboard
-path, visual state or package upgrade. In a product checkout, use
-`testing/shadcn/native-probes/suite.json`, its behavior files and registry sources
-for exact cases and dependencies. `examples/standalone-panels` is an additional
-15-component example, not the full supported set. Menus and dialogs are no longer
-categorically excluded. Prove the interactions your application actually uses.
+Those results cover the pinned `new-york-v4` fixtures and the assertions in
+`testing/shadcn/native-probes/suite.json`. They do not establish every variant,
+visual state, package upgrade or physical input path. The 63-name catalogue also
+contains the composed `data-table` and `date-picker` recipes; they do not yet have
+packaged scenarios and remain unverified. Use the suite, its behavior files and
+registry sources for exact cases and dependencies. Prove the interactions your
+application actually uses.
 
 ## Boundaries that must shape the code
 
