@@ -3,7 +3,7 @@ name: attar-demo
 description: "Build ambitious native applications with Attar while avoiding unsupported code. Use for Attar apps, demos, prototypes and showcases: establish the installed SDK boundary, prove uncertain dependencies early, and build complete user flows with React, static CSS and supported native capabilities."
 metadata:
   author: occam-tech
-  version: "1.1.0"
+  version: "1.2.0"
   homepage: https://attar.dev
 ---
 
@@ -23,13 +23,30 @@ The installed skill name remains `attar-demo`; its workflow applies to complete
 applications as well as demos. There is no line-count, component-count or
 single-screen limit imposed by this skill.
 
-## Establish the actual build target
+## Install the CLI and establish the build target
+
+On Apple silicon with macOS 15 or newer, install
+[Homebrew](https://brew.sh/) if it is missing. Install Apple's Command Line Tools
+with `xcode-select --install` if `xcode-select -p` does not find them. Then:
 
 ```sh
+brew install occam-tech/attar/attar
 attar --version
 attar doctor --json
-attar build --help
 ```
+
+The formula installs the CLI, compiler, SDK and its Python dependency. A generated
+TSX starter needs no separate React, Node or Rust installation. Extra application
+dependencies or native extensions can need additional build tools; document those
+separately. For an existing Homebrew installation, use `brew update` followed by
+`brew upgrade occam-tech/attar/attar`, then check the resulting version and doctor.
+
+For a manual installation or Linux, follow the platform-specific
+[release instructions](https://attar.dev/release). Do not apply the macOS commands
+or its verification claim to Linux. Do not build the compiler or Chromium merely
+to start an application.
+
+Use `attar build --help` for the installed command surface.
 
 Record the exact version and platform before choosing dependencies. This skill's
 macOS baseline is `0.1.0-dev.7620.g57143d8614b3`, checked on 2026-09-18:
@@ -49,6 +66,39 @@ conflict against the installed version, its diagnostics and a focused check.
 If doctor fails, follow its documented remediation, then rerun it. Do not patch
 installed toolchain files, bypass integrity checks or continue a dependent build
 with a broken SDK. Continue independent design or source work where useful.
+
+## Required UI framework and versions
+
+For this skill's TSX applications, use **React with Attar's supplied renderer**.
+Do not substitute Vue, Angular, Svelte, Preact, a browser ReactDOM renderer, or an
+Electron/Next.js runtime. Such a change needs a separately implemented and
+verified integration; it is not an ordinary application dependency choice.
+The generated plain-JavaScript template is a separate supported entry route,
+not evidence that another UI framework is integrated.
+
+The `7620` release fixes these versions and bindings:
+
+| Component | Required version or route |
+|---|---|
+| React | `19.3.0`, supplied through the SDK's React adapter. |
+| React reconciler | `0.34.0`, supplied by the SDK; do not install a replacement renderer. |
+| `react-dom` and `react-dom/client` imports | Both resolve to the SDK's `runtime/ui/attar-host/react-dom.js`. If an application package needs a `react-dom` peer dependency, pin `19.3.0`; this does not supply the browser renderer. |
+| JSX runtime | The SDK's `react/jsx-runtime` alias; retain the generated build pipeline. |
+| Styles | Static local CSS. Tailwind is optional and must be compiled to CSS before the Attar build. |
+
+If an application declares React dependencies, use exact versions, without `^`,
+`~` or `latest`, and commit its lockfile. Do not upgrade React or reconciler
+independently of the SDK. A successful npm install cannot establish renderer
+compatibility. For a newer SDK, inspect its shipped
+`runtime/ui/react-host/package.json` and `runtime/ui/build/bundle.cjs` first;
+record that release's exact pair and aliases before adapting these rules.
+
+Component libraries are optional, not alternative renderers. The release's
+Panels example pins `radix-ui` to `1.6.7`, and its CSS toolchain pins
+`tailwindcss` and `@tailwindcss/cli` to `4.3.3`. Reuse matching fixtures when using
+those integrations. This does not certify all Radix components or require
+Tailwind for an application. Pin and probe any other component-library version
+before depending on it.
 
 ## Preserve ambition; resolve risk before expansion
 
@@ -126,7 +176,8 @@ Use these as starting points, not an exhaustive list or a promise that every
 option and combination is covered:
 
 - React state, effects, refs, keyed lists and controlled inputs. Keep the
-  template's dependency versions; probe upgrades or new packages before adoption.
+  required SDK framework versions above. Check the exact control and interaction;
+  support for one input does not establish every native control's behavior.
 - Semantic HTML for forms, navigation, tables, panels and text; inline SVG and
   bundled images for graphics.
 - Static CSS imported from the entry or listed in `[ui].stylesheets`. Blink owns
@@ -168,12 +219,40 @@ writing a feature around them:
 | Runtime `node:*` imports or Node/Electron globals in the standalone UI | Pure application logic or a documented, verified native integration. Build tools may use Node. |
 | `Blob`, desktop file drops, `window.scroll` | These have named unsupported diagnostics. Use an admitted asset, file integration or element-scroll path only when it satisfies the same need. |
 
+Check specific API options as well as API names. These additional refusals are
+explicit in the shipped `7620` JavaScript adapters:
+
+| Released source, relative to the installed SDK | Explicit restriction |
+|---|---|
+| `runtime/ui/attar-host/cssom.js` | `style.setProperty` with a nonempty priority is refused (`ATTAR_UI_STYLE_PRIORITY_UNSUPPORTED`). Put `!important`, if needed, in static CSS. |
+| `runtime/ui/attar-host/runtime-prelude.js` | `getComputedStyle(element, pseudo)` refuses a nonempty pseudo selector (`ATTAR_UI_PSEUDO_STYLE_UNSUPPORTED`). |
+| `runtime/ui/attar-host/intersection-observer.js` | Document roots and the supplied options `delay`, `scrollMargin`, `trackVisibility` are refused, even if an option is `0` or `false`. Use supported element/null roots, `rootMargin` and thresholds. |
+| `runtime/ui/attar-host/scroll-support.js` | Window scroll methods/offsets and the host root's element-scroll access are refused. Use a real scrollable element. This does not prohibit native wheel scrolling. |
+| `runtime/ui/attar-host/web-globals.js` | Constructing the fallback `Blob` throws `ATTAR_WEB_API_UNSUPPORTED`; its presence as a function is not support. |
+| `runtime/ui/build/bundle.cjs` | Dynamic CSS imports, `.module.css`, external stylesheets and unresolved external JavaScript edges are refused. The UI graph must close at build time. |
+| `tools/attar_cli/standalone.py` | `[ui]` accepts only the four keys listed above. There is no `nativeLib` key; use a documented native build recipe. |
+
+Blink's native CSS surface is also bounded. Parsing or bundling a CSS property
+does not prove its native implementation is included. In this release,
+`accent-color` reaches `ATTAR_LONGHAND_OUTSIDE_CLOSURE` during native execution;
+avoid it and verify custom control styling in the packaged app. Probe unfamiliar
+properties before applying them across the application. For inline SVG, use
+literal attribute names such as `stroke-width`, `font-size` and `text-anchor`
+when the adapter does not normalize the React camel-case spelling; verify the
+rendered result rather than assuming browser ReactDOM parity.
+
 Do not assume a browser service exists because Blink renders the UI. Networking
 (`fetch`, XMLHttpRequest, WebSocket), persistent browser storage, canvas contexts,
 media playback, embedded frames, workers, clipboard and device APIs are not
 established by this standalone baseline. Before designing a feature around one,
 find a documented route for the exact target and prove it. A JS polyfill does not
 supply a missing OS service, native renderer or execution capability.
+
+Treat the tables as confirmed release boundaries, and the service list above as
+capabilities requiring evidence. Do not invent additional bans from an absent
+example. Inspect the installed adapter, configuration validator and native
+diagnostic for each proposed restriction. Record the SDK version and reproducer
+when a new restriction is discovered; do not generalize it to other releases.
 
 Keep required assets local and statically discoverable. Use the documented
 resource and font configuration; do not hard-code development-machine paths.
